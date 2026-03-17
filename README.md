@@ -36,7 +36,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Arbitr (kad.arbitr.ru) парсер
+# Arbitr (kad.arbitr.ru) парсер
 
 Парсер (Scrapy) для получения данных по делу с `https://kad.arbitr.ru/`
 
