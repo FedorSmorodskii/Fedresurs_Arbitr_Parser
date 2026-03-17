@@ -1,0 +1,98 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-parser}
+      POSTGRES_USER: ${POSTGRES_USER:-parser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-parser}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-parser} -d ${POSTGRES_DB:-parser}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  fedresurs:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: ${DB_URL:-postgresql+psycopg://${POSTGRES_USER:-parser}:${POSTGRES_PASSWORD:-parser}@db:5432/${POSTGRES_DB:-parser}}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CONCURRENCY: ${CONCURRENCY:-18}
+      DOWNLOAD_DELAY: ${DOWNLOAD_DELAY:-0.1}
+      RETRY_TIMES: ${RETRY_TIMES:-6}
+      DOWNLOAD_TIMEOUT: ${DOWNLOAD_TIMEOUT:-30}
+      INN_XLSX: ${INN_XLSX:-/app/input/inn.xlsx}
+    volumes:
+      - ./input:/app/input:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command:
+      - python
+      - -m
+      - src.app
+      - --input
+      - ${INN_XLSX:-/app/input/inn.xlsx}
+      - --db
+      - ${DB_URL:-postgresql+psycopg://${POSTGRES_USER:-parser}:${POSTGRES_PASSWORD:-parser}@db:5432/${POSTGRES_DB:-parser}}
+      - --log-level
+      - ${LOG_LEVEL:-INFO}
+      - --log-file
+      - /app/logs/fedresurs.log
+      - --concurrency
+      - ${CONCURRENCY:-18}
+      - --download-delay
+      - ${DOWNLOAD_DELAY:-0.1}
+      - --retry-times
+      - ${RETRY_TIMES:-6}
+      - --download-timeout
+      - ${DOWNLOAD_TIMEOUT:-30}
+      - --resume
+
+  arbitr:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: ${DB_URL:-postgresql+psycopg://${POSTGRES_USER:-parser}:${POSTGRES_PASSWORD:-parser}@db:5432/${POSTGRES_DB:-parser}}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CONCURRENCY: ${ARBITR_CONCURRENCY:-4}
+      DOWNLOAD_DELAY: ${ARBITR_DOWNLOAD_DELAY:-0.5}
+      RETRY_TIMES: ${RETRY_TIMES:-6}
+      DOWNLOAD_TIMEOUT: ${DOWNLOAD_TIMEOUT:-30}
+      CASES_XLSX: ${CASES_XLSX:-/app/input/cases.xlsx}
+    volumes:
+      - ./input:/app/input:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command:
+      - python
+      - -m
+      - src.app_arbitr
+      - --input
+      - ${CASES_XLSX:-/app/input/cases.xlsx}
+      - --db
+      - ${DB_URL:-postgresql+psycopg://${POSTGRES_USER:-parser}:${POSTGRES_PASSWORD:-parser}@db:5432/${POSTGRES_DB:-parser}}
+      - --log-level
+      - ${LOG_LEVEL:-INFO}
+      - --log-file
+      - /app/logs/arbitr.log
+      - --concurrency
+      - ${ARBITR_CONCURRENCY:-4}
+      - --download-delay
+      - ${ARBITR_DOWNLOAD_DELAY:-0.5}
+      - --retry-times
+      - ${RETRY_TIMES:-6}
+      - --download-timeout
+      - ${DOWNLOAD_TIMEOUT:-30}
+      - --resume
+
+volumes:
+  pgdata:
+
